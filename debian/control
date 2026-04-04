@@ -1,0 +1,14 @@
+Source: promptvault
+Section: utils
+Priority: optional
+Maintainer: Milo <milo@example.com>
+Build-Depends: debhelper-compat (= 13), python3-all, python3-pyside6, python3-pytest
+Depends: ${misc:Depends}, ${python3:Depends}, python3-pyside6, python3 (>= 3.11)
+Standards-Version: 4.6.0
+Homepage: https://github.com/milolywood-cmd/promptvault
+
+Package: promptvault
+Architecture: all
+Depends: ${misc:Depends}, ${python3:Depends}, python3-pyside6, python3 (>= 3.11)
+Description: Local GUI Prompt Manager
+ A PySide6 application for managing AI prompts locally.
