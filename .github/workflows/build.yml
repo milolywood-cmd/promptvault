@@ -1,0 +1,34 @@
+name: Build Releases
+
+on:
+  release:
+    types: [created]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build Windows executable
+        run: |
+          pyinstaller --onefile --windowed --name PromptVault --add-data "ui;ui" --hidden-import=PySide6 --hidden-import=sqlite3 --collect-all=PySide6 main.py
+
+      - name: Upload Windows executable
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/PromptVault.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
