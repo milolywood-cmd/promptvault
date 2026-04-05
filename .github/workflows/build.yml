@@ -29,6 +29,7 @@ jobs:
           dpkg-buildpackage -us -uc
 
       - name: Upload Debian package
+        if: github.event_name == 'release'
         uses: softprops/action-gh-release@v1
         with:
           files: ../promptvault_*.deb
@@ -58,6 +59,7 @@ jobs:
           pyinstaller --onefile --windowed --name PromptVault --add-data "ui;ui" --hidden-import=PySide6 --hidden-import=sqlite3 --collect-all=PySide6 main.py
 
       - name: Upload Windows executable
+        if: github.event_name == 'release'
         uses: softprops/action-gh-release@v1
         with:
           files: dist/PromptVault.exe
