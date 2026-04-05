@@ -22,7 +22,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y debhelper python3-all python3-pip python3-pytest
+          sudo apt-get install -y build-essential debhelper python3-all python3-pip python3-pytest
           pip install PySide6
 
       - name: Build Debian package
