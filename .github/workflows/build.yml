@@ -6,6 +6,35 @@ on:
   workflow_dispatch:
 
 jobs:
+  build-deb:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y debhelper python3-all python3-pyside6 python3-pytest
+
+      - name: Build Debian package
+        run: |
+          dpkg-buildpackage -us -uc
+
+      - name: Upload Debian package
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ../promptvault_*.deb
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   build-windows:
     runs-on: windows-latest
     permissions:
