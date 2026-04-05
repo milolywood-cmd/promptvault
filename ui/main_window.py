@@ -1,9 +1,10 @@
 """Main window for PromptVault."""
 import db
+from pathlib import Path
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QScrollArea, QGridLayout, QPushButton, QMessageBox,
-    QSplitter, QStatusBar, QLabel
+    QSplitter, QStatusBar, QLabel, QFileDialog
 )
 from PySide6.QtCore import Signal, QThread, Qt
 from PySide6.QtGui import QClipboard
@@ -105,6 +106,14 @@ class MainWindow(QMainWindow):
         self.copy_btn.clicked.connect(self._on_copy_clipboard)
         self.copy_btn.setEnabled(False)
         button_layout.addWidget(self.copy_btn)
+
+        self.export_btn = QPushButton("Export")
+        self.export_btn.clicked.connect(self._on_export)
+        button_layout.addWidget(self.export_btn)
+
+        self.import_btn = QPushButton("Import")
+        self.import_btn.clicked.connect(self._on_import)
+        button_layout.addWidget(self.import_btn)
 
         button_layout.addStretch()
         content_layout.addLayout(button_layout)
@@ -325,3 +334,72 @@ class MainWindow(QMainWindow):
                     "Error",
                     f"Could not add category: {str(e)}"
                 )
+
+    def _on_export(self):
+        """Handle export button click."""
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export Prompts",
+            "prompts_export.md",
+            "Markdown Files (*.md);;All Files (*)"
+        )
+
+        if not file_path:
+            return
+
+        try:
+            path = Path(file_path)
+            count = db.export_prompts(path)
+            self.status_label.setText(f"Exported {count} prompt(s) to {path.name}")
+            QMessageBox.information(
+                self,
+                "Export Complete",
+                f"Successfully exported {count} prompt(s) to:\n{path}"
+            )
+        except Exception as e:
+            QMessageBox.warning(
+                self,
+                "Export Error",
+                f"Could not export prompts: {str(e)}"
+            )
+
+    def _on_import(self):
+        """Handle import button click."""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Import Prompts",
+            "",
+            "Markdown Files (*.md);;All Files (*)"
+        )
+
+        if not file_path:
+            return
+
+        reply = QMessageBox.question(
+            self,
+            "Import Prompts",
+            "This will import prompts from the file. Continue?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+
+        if reply != QMessageBox.Yes:
+            return
+
+        try:
+            path = Path(file_path)
+            imported, errors = db.import_prompts(path)
+            self._load_prompts()
+            self._load_categories()
+            self.status_label.setText(f"Imported {imported} prompt(s)")
+            QMessageBox.information(
+                self,
+                "Import Complete",
+                f"Imported: {imported} prompt(s)\nErrors: {errors}"
+            )
+        except Exception as e:
+            QMessageBox.warning(
+                self,
+                "Import Error",
+                f"Could not import prompts: {str(e)}"
+            )

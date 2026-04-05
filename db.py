@@ -192,3 +192,132 @@ def get_category_name(category_id: int) -> Optional[str]:
         return row["name"] if row else None
     finally:
         conn.close()
+
+
+def export_prompts(path: Path) -> int:
+    """Export all prompts to a human-readable markdown file.
+
+    Returns the number of prompts exported.
+    """
+    prompts = get_prompts()
+    categories = {c.id: c.name for c in get_categories()}
+
+    lines = [
+        "# PromptVault Export",
+        f"# Exported: 2026-04-04",
+        f"# Total prompts: {len(prompts)}",
+        "",
+    ]
+
+    for prompt in prompts:
+        lines.append("---")
+        lines.append(f"title: {prompt.title}")
+        if prompt.category_id and prompt.category_id in categories:
+            lines.append(f"category: {categories[prompt.category_id]}")
+        if prompt.tags:
+            lines.append(f"tags: {prompt.tags}")
+        lines.append("---")
+        lines.append("")
+        lines.append(prompt.content)
+        lines.append("")
+
+    path.write_text("\n".join(lines), encoding="utf-8")
+    return len(prompts)
+
+
+def import_prompts(path: Path) -> tuple[int, int]:
+    """Import prompts from a human-readable markdown file.
+
+    Returns (imported_count, errors_count).
+    """
+    content = path.read_text(encoding="utf-8")
+    lines = content.split("\n")
+
+    categories = {c.name.lower(): c.id for c in get_categories()}
+    category_cache = {}  # cache for newly created categories
+
+    imported = 0
+    errors = 0
+
+    # Parse prompts separated by "---"
+    current_prompt = None
+    in_content = False
+    content_lines = []
+
+    for line in lines:
+        line = line.rstrip()
+
+        # Skip comments and headers
+        if line.startswith("#") and not line.startswith("---"):
+            continue
+
+        if line == "---":
+            if current_prompt is not None:
+                # Save previous prompt
+                if content_lines:
+                    current_prompt["content"] = "\n".join(content_lines).strip()
+                    try:
+                        _import_single_prompt(current_prompt, categories, category_cache)
+                        imported += 1
+                    except Exception:
+                        errors += 1
+                content_lines = []
+                current_prompt = None
+                in_content = False
+            else:
+                # Start new prompt
+                current_prompt = {"title": None, "category": None, "tags": None, "content": ""}
+                in_content = False
+        elif current_prompt is not None:
+            if not in_content:
+                # Still in header
+                if line.startswith("title:"):
+                    current_prompt["title"] = line[6:].strip()
+                elif line.startswith("category:"):
+                    current_prompt["category"] = line[9:].strip()
+                elif line.startswith("tags:"):
+                    current_prompt["tags"] = line[5:].strip()
+                elif line == "":
+                    # Empty line after header = content starts
+                    in_content = True
+            else:
+                # In content
+                content_lines.append(line)
+
+    # Don't forget the last prompt
+    if current_prompt is not None and content_lines:
+        current_prompt["content"] = "\n".join(content_lines).strip()
+        try:
+            _import_single_prompt(current_prompt, categories, category_cache)
+            imported += 1
+        except Exception:
+            errors += 1
+
+    return imported, errors
+
+
+def _import_single_prompt(prompt_data, categories, category_cache):
+    """Import a single prompt, creating category if needed."""
+    title = prompt_data.get("title")
+    content = prompt_data.get("content", "")
+
+    if not title or not content:
+        raise ValueError("Missing title or content")
+
+    # Resolve category
+    category_id = None
+    category_name = prompt_data.get("category")
+    if category_name:
+        cat_lower = category_name.lower()
+        if cat_lower in categories:
+            category_id = categories[cat_lower]
+        elif cat_lower in category_cache:
+            category_id = category_cache[cat_lower]
+        else:
+            # Create new category
+            new_cat = add_category(category_name)
+            categories[cat_lower] = new_cat.id
+            category_cache[cat_lower] = new_cat.id
+            category_id = new_cat.id
+
+    add_prompt(title, content, category_id, prompt_data.get("tags"))
