@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="promptvault",
-    version="1.0.0",
+    version="1.1.0",
     description="Local GUI Prompt Manager",
     author="Milo",
     author_email="milo@example.com",
